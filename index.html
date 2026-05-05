@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>쏘나타 소모품 마스터</title>
+    <style>
+        /* 1. 디자인 (CSS) */
+        :root {
+            --bg: #0f0f1a; --card: #1a1a2e; --primary: #4361ee;
+            --success: #06d6a0; --warning: #fb8500; --danger: #f72585;
+            --fg: #e0e0ff; --muted: #8888aa; --border: #2a2a4a;
+            --radius: 14px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--fg); padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .card { background: var(--card); border-radius: var(--radius); padding: 20px; margin-bottom: 15px; border: 1px solid var(--border); }
+        h1 { font-size: 24px; margin-bottom: 20px; text-align: center; }
+        select, input { width: 100%; padding: 12px; background: #0b0b18; border: 1px solid var(--border); color: #fff; border-radius: 8px; margin-top: 8px; }
+        .item-card { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 10px; }
+        .gauge-container { height: 10px; background: #2a2a4a; border-radius: 5px; overflow: hidden; margin-top: 5px; }
+        .gauge-fill { height: 100%; transition: width 0.5s ease; }
+        .btn-update { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+        .status-text { font-size: 12px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 쏘나타 소모품 관리</h1>
+        
+        <div class="card">
+            <label>차량 선택</label>
+            <select id="carSelector" onchange="initApp()">
+                <option value="sonata">현대 쏘나타 (가솔린)</option>
+                <option value="avante">현대 아반떼</option>
+            </select>
+            
+            <label style="display:block; margin-top:15px;">현재 주행거리 (km)</label>
+            <input type="number" id="currentMileage" value="0" oninput="saveData()">
+        </div>
+
+        <div id="consumablesList">
+            </div>
+    </div>
+
+    <script>
+        /* 2. 기능 (JS) */
+        const carData = {
+            sonata: [
+                { name: "엔진오일", km: 7500, month: 6 },
+                { name: "에어컨 필터", km: 10000, month: 6 },
+                { name: "브레이크 패드", km: 40000, month: 24 },
+                { name: "점화 플러그", km: 70000, month: 48 }
+            ],
+            avante: [
+                { name: "엔진오일", km: 10000, month: 12 },
+                { name: "에어컨 필터", km: 10000, month: 6 }
+            ]
+        };
+
+        function initApp() {
+            const carType = document.getElementById('carSelector').value;
+            const listDiv = document.getElementById('consumablesList');
+            listDiv.innerHTML = '';
+
+            carData[carType].forEach((item, index) => {
+                const saved = JSON.parse(localStorage.getItem(`${carType}_${index}`)) || { lastKm: 0, lastDate: new Date().toISOString() };
+                const currentKm = parseInt(document.getElementById('currentMileage').value) || 0;
+                
+                // 교체 주기 계산 (키로수 기준)
+                const usedKm = currentKm - saved.lastKm;
+                let percent = Math.min((usedKm / item.km) * 100, 100);
+                if (percent < 0) percent = 0;
+
+                const color = percent > 90 ? '#f72
