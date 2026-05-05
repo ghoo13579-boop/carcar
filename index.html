@@ -47,9 +47,9 @@
         <div class="card">
             <label>차량 유형</label>
             <select id="typeSelect" onchange="changeType()">
-                <option value="ice">내연기관</option>
-                <option value="ev">전기차</option>
-                <option value="fcev">수소차</option>
+                <option value="ice">⛽ 내연기관 (가솔린/디젤/LPG)</option>
+                <option value="ev">⚡ 전기차 (EV)</option>
+                <option value="fcev">💧 수소차 (FCEV)</option>
             </select>
             <label>현재 총 주행거리 (km)</label>
             <input type="number" id="currentKm" placeholder="현재 키로수 입력" oninput="saveKm()">
@@ -58,7 +58,6 @@
         <div id="itemList"></div>
 
         <button class="btn btn-edit" style="width:100%; padding:15px; border:1px dashed var(--success); color:var(--success); background:none; margin-top: 10px;" onclick="openItemModal(true)">+ 소모품 항목 직접 추가</button>
-
         <button class="btn btn-reset" onclick="resetAllData()">⚠️ 전체 데이터 초기화</button>
     </div>
 
@@ -91,14 +90,37 @@
     </div>
 
     <script>
+        // --- 전 차종 필수 소모품 풀 리스트 ---
         const presets = {
             ice: [
-                { id: 1, name: "엔진오일", km: 7500, month: 6 },
-                { id: 2, name: "와이퍼 블레이드", km: 0, month: 6 },
-                { id: 3, name: "에어컨 필터", km: 10000, month: 6 }
+                { id: 1, name: "엔진오일 및 필터", km: 7500, month: 6 },
+                { id: 2, name: "에어컨 필터", km: 10000, month: 6 },
+                { id: 3, name: "와이퍼 블레이드", km: 0, month: 6 },
+                { id: 4, name: "브레이크 액", km: 40000, month: 24 },
+                { id: 5, name: "브레이크 패드", km: 40000, month: 0 },
+                { id: 6, name: "타이어 위치 교환", km: 10000, month: 12 },
+                { id: 7, name: "배터리(12V)", km: 0, month: 36 },
+                { id: 8, name: "부동액(냉각수)", km: 200000, month: 120 },
+                { id: 9, name: "미션 오일", km: 80000, month: 0 },
+                { id: 10, name: "점화 플러그", km: 70000, month: 0 }
             ],
-            ev: [{ id: 4, name: "감속기 오일", km: 120000, month: 0 }],
-            fcev: [{ id: 5, name: "이온 필터", km: 60000, month: 0 }]
+            ev: [
+                { id: 11, name: "에어컨 필터", km: 15000, month: 12 },
+                { id: 12, name: "와이퍼 블레이드", km: 0, month: 6 },
+                { id: 13, name: "브레이크 액", km: 40000, month: 24 },
+                { id: 14, name: "감속기 오일", km: 120000, month: 0 },
+                { id: 15, name: "전기차 전용 냉각수", km: 200000, month: 120 },
+                { id: 16, name: "타이어 (포지션 체크)", km: 10000, month: 12 },
+                { id: 17, name: "브레이크 패드(회생제동)", km: 80000, month: 0 }
+            ],
+            fcev: [
+                { id: 18, name: "이온 필터", km: 60000, month: 0 },
+                { id: 19, name: "에어컨 필터", km: 15000, month: 12 },
+                { id: 20, name: "와이퍼 블레이드", km: 0, month: 6 },
+                { id: 21, name: "수소차 전용 냉각수", km: 200000, month: 120 },
+                { id: 22, name: "브레이크 액", km: 40000, month: 24 },
+                { id: 23, name: "공기 제어 밸브 가스켓", km: 100000, month: 0 }
+            ]
         };
 
         let currentType = 'ice';
@@ -139,27 +161,26 @@
                         <div class="item-header">
                             <div>
                                 <div class="item-name">${item.name}</div>
-                                <div style="font-size:11px; color:var(--muted)">주기: ${item.km > 0 ? item.km.toLocaleString()+'km' : ''} ${item.month > 0 ? item.month+'개월' : ''}</div>
+                                <div style="font-size:11px; color:var(--muted)">권장 주기: ${item.km > 0 ? item.km.toLocaleString()+'km' : ''} ${item.month > 0 ? item.month+'개월' : ''}</div>
                             </div>
                             <div class="percent" style="color:${color}">${Math.floor(per)}%</div>
                         </div>
                         <div class="gauge-bg"><div class="gauge-fill" style="width:${per}%; background:${color}"></div></div>
-                        <div class="next-info">🔔 예정: ${nextInfo}</div>
+                        <div class="next-info">🔔 예상 교체: ${nextInfo}</div>
                         <div class="btn-group">
-                            <button class="btn btn-main" onclick="openDoneModal(${item.id})">교체 기록</button>
-                            <button class="btn btn-edit" onclick="openItemModal(false, ${item.id})">수정/삭제</button>
+                            <button class="btn btn-main" onclick="openDoneModal(${item.id})">교체 기록 등록</button>
+                            <button class="btn btn-edit" onclick="openItemModal(false, ${item.id})">주기 수정/삭제</button>
                         </div>
-                        ${history.length > 0 ? `<div class="history-list"><div style="font-weight:bold; margin-bottom:5px;">기록</div>${history.slice(0,2).map(h=>`<div class="history-item"><span>${new Date(h.date).toLocaleDateString()}</span><span>${h.km.toLocaleString()}km</span></div>`).join('')}</div>` : ''}
+                        ${history.length > 0 ? `<div class="history-list"><div style="font-weight:bold; margin-bottom:5px;">정비 기록</div>${history.slice(0,2).map(h=>`<div class="history-item"><span>📅 ${new Date(h.date).toLocaleDateString()}</span><span>📍 ${h.km.toLocaleString()}km</span></div>`).join('')}</div>` : ''}
                     </div>
                 `;
             });
         }
 
-        // 초기화 함수
         function resetAllData() {
-            if (confirm("정말로 모든 데이터를 초기화할까요?\n저장된 주행거리와 모든 정비 기록이 삭제됩니다.")) {
+            if (confirm("모든 데이터를 초기화하시겠습니까? 기본 필수 항목만 남게 됩니다.")) {
                 localStorage.clear();
-                alert("초기화되었습니다.");
+                alert("초기화 완료");
                 location.reload();
             }
         }
@@ -217,7 +238,7 @@
         }
 
         function deleteItem() {
-            if(!confirm("이 항목을 삭제하시겠습니까?")) return;
+            if(!confirm("삭제하시겠습니까?")) return;
             let items = JSON.parse(localStorage.getItem(`items_${currentType}`));
             items = items.filter(i => i.id !== editId);
             localStorage.setItem(`items_${currentType}`, JSON.stringify(items));
