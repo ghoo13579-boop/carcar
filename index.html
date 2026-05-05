@@ -11,26 +11,29 @@
             --fg: #e0e0ff; --muted: #8888aa; --border: #2a2a4a;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--fg); padding: 15px; padding-bottom: 50px; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--fg); padding: 15px; line-height: 1.5; }
         .container { max-width: 500px; margin: 0 auto; }
-        .header { text-align: center; padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+        .header { text-align: center; padding: 20px 0; }
         .card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 12px; border: 1px solid var(--border); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
         label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
         select, input { width: 100%; padding: 12px; background: #0b0b18; border: 1px solid var(--border); color: #fff; border-radius: 10px; font-size: 16px; outline: none; margin-bottom: 10px; }
         
-        .item-info { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
+        /* 항목 디자인 */
+        .item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
         .item-name { font-weight: bold; font-size: 17px; }
         .percent { font-size: 18px; font-weight: 800; }
-        
         .gauge-bg { height: 8px; background: #2a2a4a; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
         .gauge-fill { height: 100%; transition: width 0.5s ease-in-out; }
         
+        /* 버튼 */
         .btn-group { display: flex; gap: 8px; margin-top: 12px; }
-        .btn { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .btn { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; transition: 0.2s; }
         .btn-main { background: var(--primary); color: white; }
         .btn-edit { background: #2d3748; color: #ccc; }
-        
-        /* 모달 스타일 */
+        .btn-add { width: 100%; background: #2d3748; color: var(--success); border: 1px dashed var(--success); margin-top: 10px; padding: 15px; font-size: 15px; }
+        .btn-danger { background: rgba(247, 37, 133, 0.2); color: var(--danger); flex: 0.3; }
+
+        /* 모달 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
         .modal.active { display: flex; }
         .modal-content { background: var(--card); width: 100%; max-width: 380px; padding: 25px; border-radius: 20px; border: 1px solid var(--border); }
@@ -41,125 +44,151 @@
         <div class="header"><h1>🚗 자동차 소모품 관리</h1></div>
 
         <div class="card">
-            <label>내 차종 선택</label>
-            <select id="carSelect" onchange="changeCar()">
-                <option value="ice"> 내연기관 공용</option>
-                <option value="ev">전기차 (아이오닉, EV6, 테슬라 등)</option>
+            <label>차량 유형</label>
+            <select id="typeSelect" onchange="changeType()">
+                <option value="ice">내연기관 (가솔린/디젤/LPG)</option>
+                <option value="ev">전기차 (EV)</option>
+                <option value="fcev">수소차 (FCEV)</option>
             </select>
-            <label>현재 총 주행거리 (km)</label>
-            <input type="number" id="currentKm" placeholder="현재 키로수를 입력하세요" oninput="render()">
+            <label>현재 주행거리 (km)</label>
+            <input type="number" id="currentKm" placeholder="현재 키로수 입력" oninput="saveKm()">
         </div>
 
-        <div id="list"></div>
+        <div id="itemList"></div>
+
+        <button class="btn btn-add" onclick="openModal(true)">+ 소모품 항목 직접 추가하기</button>
     </div>
 
-    <div id="editModal" class="modal">
+    <div id="modal" class="modal">
         <div class="modal-content">
-            <h3 id="editTitle" style="margin-bottom:15px;">항목 수정</h3>
+            <h3 id="modalTitle">항목 추가</h3>
+            <label>소모품 명칭</label>
+            <input type="text" id="inName" placeholder="예: 와이퍼, 미션오일">
             <label>교체 주기 (km)</label>
-            <input type="number" id="editKm">
+            <input type="number" id="inKm" placeholder="0 입력 시 무시">
             <label>교체 주기 (개월)</label>
-            <input type="number" id="editMonth">
+            <input type="number" id="inMonth" placeholder="0 입력 시 무시">
             <div class="btn-group">
                 <button class="btn btn-edit" onclick="closeModal()">취소</button>
-                <button class="btn btn-main" onclick="saveCustom()">저장</button>
+                <button class="btn btn-main" onclick="saveItem()">저장</button>
             </div>
         </div>
     </div>
 
     <script>
-        // 1. 소모품 풀 데이터 (싹 다 추가)
-        const iceItems = [
-            { id: 'oil', name: "엔진오일 & 필터", km: 7500, month: 6 },
-            { id: 'aircon', name: "에어컨 필터", km: 10000, month: 6 },
-            { id: 'brake_f', name: "브레이크 액", km: 40000, month: 24 },
-            { id: 'brake_p', name: "브레이크 패드", km: 40000, month: 0 },
-            { id: 'tire', name: "타이어 위치 교환", km: 10000, month: 12 },
-            { id: 'spark', name: "점화 플러그", km: 70000, month: 0 },
-            { id: 'coolant', name: "냉각수", km: 200000, month: 120 },
-            { id: 'battery', name: "12V 배터리", km: 0, month: 36 },
-            { id: 'mission', name: "변속기 오일", km: 80000, month: 0 },
-            { id: 'belt', name: "겉벨트 세트", km: 100000, month: 72 }
-        ];
+        // 초기 기본 데이터 (사용자가 삭제 가능)
+        const presets = {
+            ice: [
+                { id: Date.now()+1, name: "엔진오일", km: 7500, month: 6 },
+                { id: Date.now()+2, name: "에어컨 필터", km: 10000, month: 6 },
+                { id: Date.now()+3, name: "브레이크 액", km: 40000, month: 24 }
+            ],
+            ev: [
+                { id: Date.now()+4, name: "감속기 오일", km: 120000, month: 0 },
+                { id: Date.now()+5, name: "에어컨 필터", km: 15000, month: 12 }
+            ],
+            fcev: [
+                { id: Date.now()+6, name: "이온필터", km: 60000, month: 0 },
+                { id: Date.now()+7, name: "수소차 전용 냉각수", km: 200000, month: 0 }
+            ]
+        };
 
-        const evItems = [
-            { id: 'aircon', name: "에어컨 필터", km: 15000, month: 12 },
-            { id: 'gear', name: "감속기 오일", km: 120000, month: 0 },
-            { id: 'brake_f', name: "브레이크 액", km: 40000, month: 24 },
-            { id: 'coolant_ev', name: "전기차 전용 냉각수", km: 200000, month: 120 },
-            { id: 'tire', name: "타이어 (전기차용)", km: 10000, month: 12 },
-            { id: 'brake_p_ev', name: "브레이크 패드 (회생제동)", km: 80000, month: 0 }
-        ];
-
-        let editTarget = null;
+        let currentType = 'ice';
+        let editId = null;
 
         function render() {
-            const carType = document.getElementById('carSelect').value;
-            const currentKm = parseInt(document.getElementById('currentKm').value) || 0;
-            localStorage.setItem('u_km', currentKm);
-
-            const items = carType === 'ice' ? iceItems : evItems;
-            const list = document.getElementById('list');
+            const list = document.getElementById('itemList');
+            const km = parseInt(document.getElementById('currentKm').value) || 0;
             list.innerHTML = '';
 
-            items.forEach(item => {
-                const custom = JSON.parse(localStorage.getItem(`c_${carType}_${item.id}`)) || {};
-                const tKm = custom.km || item.km;
-                const tMonth = custom.month || item.month;
+            const items = JSON.parse(localStorage.getItem(`items_${currentType}`)) || presets[currentType];
+            localStorage.setItem(`items_${currentType}`, JSON.stringify(items));
 
-                const last = JSON.parse(localStorage.getItem(`l_${carType}_${item.id}`)) || { km: 0 };
-                const diff = currentKm - last.km;
-                
-                let per = tKm > 0 ? Math.min(Math.max((diff / tKm) * 100, 0), 100) : 0;
+            items.forEach(item => {
+                const last = JSON.parse(localStorage.getItem(`last_${item.id}`)) || { km: 0 };
+                const diff = km - last.km;
+                const per = item.km > 0 ? Math.min(Math.max((diff / item.km) * 100, 0), 100) : 0;
                 const color = per > 90 ? 'var(--danger)' : (per > 70 ? 'var(--warning)' : 'var(--success)');
 
                 list.innerHTML += `
                     <div class="card">
-                        <div class="item-info">
+                        <div class="item-header">
                             <div>
                                 <div class="item-name">${item.name}</div>
-                                <div style="font-size:11px; color:var(--muted)">권장: ${tKm > 0 ? tKm.toLocaleString()+'km' : ''} ${tMonth > 0 ? tMonth+'개월' : ''}</div>
+                                <div style="font-size:11px; color:var(--muted)">주기: ${item.km.toLocaleString()}km / ${item.month}개월</div>
                             </div>
                             <div class="percent" style="color:${color}">${Math.floor(per)}%</div>
                         </div>
                         <div class="gauge-bg"><div class="gauge-fill" style="width:${per}%; background:${color}"></div></div>
                         <div class="btn-group">
-                            <button class="btn btn-main" onclick="done('${carType}','${item.id}')">교체완료</button>
-                            <button class="btn btn-edit" onclick="openM('${carType}','${item.id}','${item.name}',${tKm},${tMonth})">주기수정</button>
+                            <button class="btn btn-main" onclick="done(${item.id})">교체완료</button>
+                            <button class="btn btn-edit" onclick="openModal(false, ${item.id})">수정</button>
+                            <button class="btn btn-danger" onclick="deleteItem(${item.id})">삭제</button>
                         </div>
                     </div>
                 `;
             });
         }
 
-        function done(c, id) {
-            const cur = document.getElementById('currentKm').value || 0;
-            localStorage.setItem(`l_${c}_${id}`, JSON.stringify({ km: parseInt(cur) }));
-            render();
+        function saveKm() { localStorage.setItem('u_km', document.getElementById('currentKm').value); render(); }
+        function changeType() { currentType = document.getElementById('typeSelect').value; localStorage.setItem('u_type', currentType); render(); }
+
+        function openModal(isAdd, id = null) {
+            const modal = document.getElementById('modal');
+            const items = JSON.parse(localStorage.getItem(`items_${currentType}`));
+            if(!isAdd) {
+                const item = items.find(i => i.id === id);
+                document.getElementById('inName').value = item.name;
+                document.getElementById('inKm').value = item.km;
+                document.getElementById('inMonth').value = item.month;
+                editId = id;
+                document.getElementById('modalTitle').innerText = "항목 수정";
+            } else {
+                document.getElementById('inName').value = '';
+                document.getElementById('inKm').value = '';
+                document.getElementById('inMonth').value = '';
+                editId = null;
+                document.getElementById('modalTitle').innerText = "새 항목 추가";
+            }
+            modal.classList.add('active');
         }
 
-        function openM(c, id, n, k, m) {
-            editTarget = { c, id };
-            document.getElementById('editTitle').innerText = n;
-            document.getElementById('editKm').value = k;
-            document.getElementById('editMonth').value = m;
-            document.getElementById('editModal').classList.add('active');
-        }
+        function closeModal() { document.getElementById('modal').classList.remove('active'); }
 
-        function closeModal() { document.getElementById('editModal').classList.remove('active'); }
+        function saveItem() {
+            const name = document.getElementById('inName').value;
+            const km = parseInt(document.getElementById('inKm').value) || 0;
+            const month = parseInt(document.getElementById('inMonth').value) || 0;
+            if(!name) return alert('이름을 입력하세요');
 
-        function saveCustom() {
-            const k = parseInt(document.getElementById('editKm').value);
-            const m = parseInt(document.getElementById('editMonth').value);
-            localStorage.setItem(`c_${editTarget.c}_${editTarget.id}`, JSON.stringify({ km: k, month: m }));
+            let items = JSON.parse(localStorage.getItem(`items_${currentType}`));
+            if(editId) {
+                items = items.map(i => i.id === editId ? {...i, name, km, month} : i);
+            } else {
+                items.push({ id: Date.now(), name, km, month });
+            }
+            localStorage.setItem(`items_${currentType}`, JSON.stringify(items));
             closeModal(); render();
         }
 
-        function changeCar() { localStorage.setItem('u_car', document.getElementById('carSelect').value); render(); }
+        function deleteItem(id) {
+            if(!confirm('정말 삭제할까요?')) return;
+            let items = JSON.parse(localStorage.getItem(`items_${currentType}`));
+            items = items.filter(i => i.id !== id);
+            localStorage.setItem(`items_${currentType}`, JSON.stringify(items));
+            render();
+        }
+
+        function done(id) {
+            const cur = document.getElementById('currentKm').value || 0;
+            localStorage.setItem(`last_${id}`, JSON.stringify({ km: parseInt(cur) }));
+            render();
+        }
 
         window.onload = () => {
             document.getElementById('currentKm').value = localStorage.getItem('u_km') || 0;
-            document.getElementById('carSelect').value = localStorage.getItem('u_car') || 'ice';
+            currentType = localStorage.getItem('u_type') || 'ice';
+            document.getElementById('typeSelect').value = currentType;
             render();
         };
     </script>
