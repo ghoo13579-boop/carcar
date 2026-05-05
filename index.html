@@ -11,7 +11,7 @@
             --fg: #e0e0ff; --muted: #8888aa; --border: #2a2a4a;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--fg); padding: 15px; padding-bottom: 50px; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--fg); padding: 15px; padding-bottom: 60px; }
         .container { max-width: 500px; margin: 0 auto; }
         .card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 12px; border: 1px solid var(--border); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
         label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
@@ -24,13 +24,15 @@
         .gauge-bg { height: 8px; background: #2a2a4a; border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
         .gauge-fill { height: 100%; transition: width 0.5s ease-in-out; }
         
+        .next-info { font-size: 13px; color: var(--warning); margin-bottom: 10px; font-weight: 600; }
+        
         .btn-group { display: flex; gap: 8px; margin-top: 12px; }
         .btn { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; }
         .btn-main { background: var(--primary); color: white; }
         .btn-edit { background: #2d3748; color: #ccc; }
         
-        .history-list { margin-top: 10px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 8px; }
-        .history-item { display: flex; justify-content: space-between; margin-bottom: 3px; }
+        .history-list { margin-top: 12px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 8px; }
+        .history-item { display: flex; justify-content: space-between; margin-bottom: 4px; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
         .modal.active { display: flex; }
@@ -48,22 +50,36 @@
                 <option value="ev">전기차</option>
                 <option value="fcev">수소차</option>
             </select>
-            <label>현재 주행거리 (km)</label>
-            <input type="number" id="currentKm" oninput="saveKm()">
+            <label>현재 총 주행거리 (km)</label>
+            <input type="number" id="currentKm" placeholder="현재 키로수 입력" oninput="saveKm()">
         </div>
 
         <div id="itemList"></div>
-        <button class="btn btn-edit" style="width:100%; padding:15px; border:1px dashed var(--success); color:var(--success); background:none;" onclick="openModal(true)">+ 소모품 항목 추가</button>
+        <button class="btn btn-edit" style="width:100%; padding:15px; border:1px dashed var(--success); color:var(--success); background:none;" onclick="openItemModal(true)">+ 소모품 항목 직접 추가</button>
     </div>
 
-    <div id="modal" class="modal">
+    <div id="doneModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom:15px;">교체 내역 등록</h3>
+            <label>교체 당시 주행거리 (km)</label>
+            <input type="number" id="doneKm">
+            <label>교체한 날짜</label>
+            <input type="date" id="doneDate">
+            <div class="btn-group">
+                <button class="btn btn-edit" onclick="closeDoneModal()">취소</button>
+                <button class="btn btn-main" onclick="saveDone()">등록하기</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="itemModal" class="modal">
         <div class="modal-content">
             <h3 id="modalTitle" style="margin-bottom:15px;">항목 추가/수정</h3>
             <label>소모품 이름</label><input type="text" id="inName">
-            <label>교체 주기 (km) *없으면 0</label><input type="number" id="inKm">
-            <label>교체 주기 (개월) *없으면 0</label><input type="number" id="inMonth">
+            <label>교체 주기 (km)</label><input type="number" id="inKm">
+            <label>교체 주기 (개월)</label><input type="number" id="inMonth">
             <div class="btn-group">
-                <button class="btn btn-edit" onclick="closeModal()">취소</button>
+                <button class="btn btn-edit" onclick="closeItemModal()">취소</button>
                 <button class="btn btn-main" onclick="saveItem()">저장</button>
             </div>
         </div>
@@ -73,8 +89,8 @@
         const presets = {
             ice: [
                 { id: 1, name: "엔진오일", km: 7500, month: 6 },
-                { id: 2, name: "와이퍼 블레이드", km: 0, month: 6 }, // 개월수 전용 예시
-                { id: 3, name: "배터리 (12V)", km: 0, month: 36 }  // 개월수 전용 예시
+                { id: 2, name: "와이퍼 블레이드", km: 0, month: 6 },
+                { id: 3, name: "에어컨 필터", km: 10000, month: 6 }
             ],
             ev: [{ id: 4, name: "감속기 오일", km: 120000, month: 0 }],
             fcev: [{ id: 5, name: "이온 필터", km: 60000, month: 0 }]
@@ -82,6 +98,7 @@
 
         let currentType = 'ice';
         let editId = null;
+        let activeItemId = null; // 교체 기록을 남길 부품 ID
 
         function render() {
             const list = document.getElementById('itemList');
@@ -94,26 +111,24 @@
 
             items.forEach(item => {
                 const history = JSON.parse(localStorage.getItem(`h_${item.id}`)) || [];
-                const last = history[0] || { km: 0, date: new Date(2000,0,1).toISOString() };
+                // 기록이 없으면 0km, 오늘날짜를 기준으로 시작
+                const last = history[0] || { km: 0, date: now.toISOString() };
                 
-                // 1. 거리 기준 계산
                 let kmPer = item.km > 0 ? ((nowKm - last.km) / item.km) * 100 : 0;
-                
-                // 2. 개월수 기준 계산
                 const lastDate = new Date(last.date);
-                const diffMonth = (now.getFullYear() - lastDate.getFullYear()) * 12 + (now.getMonth() - lastDate.getMonth());
+                const diffMonth = (now - lastDate) / (1000 * 60 * 60 * 24 * 30.44);
                 let monthPer = item.month > 0 ? (diffMonth / item.month) * 100 : 0;
 
-                // 3. 둘 중 더 큰 퍼센트 적용 (개월만 있으면 개월만 적용됨)
                 let per = Math.min(Math.max(Math.max(kmPer, monthPer), 0), 100);
                 const color = per > 90 ? 'var(--danger)' : (per > 70 ? 'var(--warning)' : 'var(--success)');
 
-                let historyHtml = history.slice(0, 3).map(h => `
-                    <div class="history-item">
-                        <span>${new Date(h.date).toLocaleDateString()}</span>
-                        <span>${h.km.toLocaleString()} km</span>
-                    </div>
-                `).join('');
+                let nextInfo = "";
+                if (item.km > 0) nextInfo += `${(last.km + item.km).toLocaleString()}km `;
+                if (item.month > 0) {
+                    const nextDate = new Date(lastDate);
+                    nextDate.setMonth(nextDate.getMonth() + item.month);
+                    nextInfo += `(${nextDate.toLocaleDateString()} 까지)`;
+                }
 
                 list.innerHTML += `
                     <div class="card">
@@ -125,28 +140,43 @@
                             <div class="percent" style="color:${color}">${Math.floor(per)}%</div>
                         </div>
                         <div class="gauge-bg"><div class="gauge-fill" style="width:${per}%; background:${color}"></div></div>
+                        <div class="next-info">🔔 차기 예정: ${nextInfo}</div>
                         <div class="btn-group">
-                            <button class="btn btn-main" onclick="done(${item.id})">교체완료</button>
-                            <button class="btn btn-edit" onclick="openModal(false, ${item.id})">수정</button>
+                            <button class="btn btn-main" onclick="openDoneModal(${item.id})">교체 기록 등록</button>
+                            <button class="btn btn-edit" onclick="openItemModal(false, ${item.id})">수정/삭제</button>
                         </div>
-                        ${history.length > 0 ? `<div class="history-list"><div style="margin-bottom:5px;">최근 교체 내역</div>${historyHtml}</div>` : ''}
+                        ${history.length > 0 ? `<div class="history-list"><div style="font-weight:bold; margin-bottom:5px;">정비 히스토리</div>${history.slice(0,3).map(h=>`<div class="history-item"><span>📅 ${new Date(h.date).toLocaleDateString()}</span><span>📍 ${h.km.toLocaleString()}km</span></div>`).join('')}</div>` : ''}
                     </div>
                 `;
             });
         }
 
-        // 교체 완료 시 내역(History)에 누적 저장
-        function done(id) {
-            const cur = parseInt(document.getElementById('currentKm').value) || 0;
-            let history = JSON.parse(localStorage.getItem(`h_${id}`)) || [];
-            history.unshift({ km: cur, date: new Date().toISOString() });
-            localStorage.setItem(`h_${id}`, JSON.stringify(history.slice(0, 10))); // 최근 10개만 저장
-            render();
+        // --- 교체 기록 모달 제어 ---
+        function openDoneModal(id) {
+            activeItemId = id;
+            document.getElementById('doneKm').value = document.getElementById('currentKm').value;
+            document.getElementById('doneDate').value = new Date().toISOString().substring(0, 10);
+            document.getElementById('doneModal').classList.add('active');
+        }
+        function closeDoneModal() { document.getElementById('doneModal').classList.remove('active'); }
+        function saveDone() {
+            const km = parseInt(document.getElementById('doneKm').value) || 0;
+            const date = document.getElementById('doneDate').value;
+            if(!date) return alert('날짜를 선택해주세요.');
+            
+            let history = JSON.parse(localStorage.getItem(`h_${activeItemId}`)) || [];
+            history.unshift({ km, date: new Date(date).toISOString() });
+            // 날짜순 정렬 (과거 데이터 입력 대응)
+            history.sort((a, b) => new Date(b.date) - new Date(a.date));
+            localStorage.setItem(`h_${activeItemId}`, JSON.stringify(history.slice(0, 10)));
+            
+            closeDoneModal(); render();
         }
 
+        // --- 기존 기능 (항목 수정 등) ---
         function saveKm() { localStorage.setItem('u_km', document.getElementById('currentKm').value); render(); }
         function changeType() { currentType = document.getElementById('typeSelect').value; localStorage.setItem('u_type', currentType); render(); }
-        function openModal(isAdd, id = null) {
+        function openItemModal(isAdd, id = null) {
             if(!isAdd) {
                 const items = JSON.parse(localStorage.getItem(`items_${currentType}`));
                 const item = items.find(i => i.id === id);
@@ -160,9 +190,9 @@
                 document.getElementById('inMonth').value = '';
                 editId = null;
             }
-            document.getElementById('modal').classList.add('active');
+            document.getElementById('itemModal').classList.add('active');
         }
-        function closeModal() { document.getElementById('modal').classList.remove('active'); }
+        function closeItemModal() { document.getElementById('itemModal').classList.remove('active'); }
         function saveItem() {
             const name = document.getElementById('inName').value;
             const km = parseInt(document.getElementById('inKm').value) || 0;
@@ -171,7 +201,7 @@
             if(editId) items = items.map(i => i.id === editId ? {...i, name, km, month} : i);
             else items.push({ id: Date.now(), name, km, month });
             localStorage.setItem(`items_${currentType}`, JSON.stringify(items));
-            closeModal(); render();
+            closeItemModal(); render();
         }
 
         window.onload = () => {
