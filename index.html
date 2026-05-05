@@ -3,74 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>쏘나타 소모품 마스터</title>
+    <title>자동차 소모품 관리</title>
     <style>
-        /* 1. 디자인 (CSS) */
         :root {
-            --bg: #0f0f1a; --card: #1a1a2e; --primary: #4361ee;
-            --success: #06d6a0; --warning: #fb8500; --danger: #f72585;
-            --fg: #e0e0ff; --muted: #8888aa; --border: #2a2a4a;
-            --radius: 14px;
+            --bg: #121212; --card: #1e1e1e; --primary: #3f51b5;
+            --text: #ffffff; --success: #4caf50; --warning: #ff9800; --danger: #f44336;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--fg); padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; }
-        .card { background: var(--card); border-radius: var(--radius); padding: 20px; margin-bottom: 15px; border: 1px solid var(--border); }
-        h1 { font-size: 24px; margin-bottom: 20px; text-align: center; }
-        select, input { width: 100%; padding: 12px; background: #0b0b18; border: 1px solid var(--border); color: #fff; border-radius: 8px; margin-top: 8px; }
-        .item-card { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 10px; }
-        .gauge-container { height: 10px; background: #2a2a4a; border-radius: 5px; overflow: hidden; margin-top: 5px; }
-        .gauge-fill { height: 100%; transition: width 0.5s ease; }
-        .btn-update { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-top: 10px; }
-        .status-text { font-size: 12px; margin-top: 5px; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+        .container { max-width: 480px; margin: 0 auto; }
+        .card { background: var(--card); border-radius: 15px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        h1 { font-size: 22px; margin-bottom: 20px; text-align: center; }
+        label { display: block; margin-bottom: 8px; font-size: 14px; color: #bbb; }
+        select, input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333; background: #2c2c2c; color: #fff; margin-bottom: 15px; font-size: 16px; }
+        .item-row { border-top: 1px solid #333; padding-top: 15px; margin-top: 15px; }
+        .item-info { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .gauge-bg { background: #333; height: 10px; border-radius: 5px; overflow: hidden; }
+        .gauge-fill { height: 100%; transition: width 0.3s; }
+        .btn-reset { width: 100%; background: var(--primary); color: white; border: none; padding: 10px; border-radius: 8px; margin-top: 10px; font-weight: bold; cursor: pointer; }
+        .btn-reset:active { opacity: 0.7; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚗 쏘나타 소모품 관리</h1>
+        <h1>🚗 자동차 소모품 관리</h1>
         
         <div class="card">
-            <label>차량 선택</label>
-            <select id="carSelector" onchange="initApp()">
-                <option value="sonata">현대 쏘나타 (가솔린)</option>
+            <label>차종 선택</label>
+            <select id="carSelect" onchange="renderItems()">
+                <option value="sonata">현대 쏘나타</option>
                 <option value="avante">현대 아반떼</option>
+                <option value="g80">제네시스 G80</option>
+                <option value="ev6">기아 EV6 (전기차)</option>
             </select>
             
-            <label style="display:block; margin-top:15px;">현재 주행거리 (km)</label>
-            <input type="number" id="currentMileage" value="0" oninput="saveData()">
+            <label>현재 주행거리 (km)</label>
+            <input type="number" id="currentKm" value="0" oninput="updateMileage()">
         </div>
 
-        <div id="consumablesList">
-            </div>
+        <div id="itemList"></div>
     </div>
 
     <script>
-        /* 2. 기능 (JS) */
-        const carData = {
-            sonata: [
-                { name: "엔진오일", km: 7500, month: 6 },
-                { name: "에어컨 필터", km: 10000, month: 6 },
-                { name: "브레이크 패드", km: 40000, month: 24 },
-                { name: "점화 플러그", km: 70000, month: 48 }
-            ],
-            avante: [
-                { name: "엔진오일", km: 10000, month: 12 },
-                { name: "에어컨 필터", km: 10000, month: 6 }
-            ]
+        const db = {
+            sonata: [{n:"엔진오일", d:7500}, {n:"에어컨필터", d:10000}, {n:"브레이크패드", d:40000}],
+            avante: [{n:"엔진오일", d:10000}, {n:"에어컨필터", d:10000}],
+            g80: [{n:"엔진오일", d:10000}, {n:"브레이크액", d:40000}],
+            ev6: [{n:"감속기오일", d:120000}, {n:"에어컨필터", d:15000}]
         };
 
-        function initApp() {
-            const carType = document.getElementById('carSelector').value;
-            const listDiv = document.getElementById('consumablesList');
-            listDiv.innerHTML = '';
+        function renderItems() {
+            const car = document.getElementById('carSelect').value;
+            const current = parseInt(document.getElementById('currentKm').value) || 0;
+            const list = document.getElementById('itemList');
+            list.innerHTML = '';
 
-            carData[carType].forEach((item, index) => {
-                const saved = JSON.parse(localStorage.getItem(`${carType}_${index}`)) || { lastKm: 0, lastDate: new Date().toISOString() };
-                const currentKm = parseInt(document.getElementById('currentMileage').value) || 0;
-                
-                // 교체 주기 계산 (키로수 기준)
-                const usedKm = currentKm - saved.lastKm;
-                let percent = Math.min((usedKm / item.km) * 100, 100);
-                if (percent < 0) percent = 0;
+            db[car].forEach((item, i) => {
+                const last = localStorage.getItem(`${car}_${i}`) || 0;
+                const diff = current - last;
+                let per = Math.min(Math.max((diff / item.d) * 100, 0), 100);
+                let color = per > 90 ? 'var(--danger)' : (per > 70 ? 'var(--warning)' : 'var(--success)');
 
-                const color = percent > 90 ? '#f72
+                list.innerHTML += `
+                    <div class="card">
+                        <div class="item-info">
+                            <strong>${item.n}</strong>
+                            <span style="color:${color}">${Math.floor(per)}%</span>
+                        </div>
+                        <div class="gauge-bg">
+                            <div class="gauge-fill" style="width:${per}%; background:${color}"></div>
+                        </div>
+                        <p style="font-size:12px; color:#aaa; margin-top:8px;">다음 교체까지 약 ${Math.max(item.d - diff, 0)}km 남음</p>
+                        <button class="btn-reset" onclick="resetItem('${car}', ${i})">교체 완료</button>
+                    </div>
+                `;
+            });
+        }
+
+        function updateMileage() {
+            localStorage.setItem('my_km', document.getElementById('currentKm').value);
+            renderItems();
+        }
+
+        function resetItem(car, i) {
+            localStorage.setItem(`${car}_${i}`, document.getElementById('currentKm').value);
+            renderItems();
+        }
+
+        window.onload = () => {
+            document.getElementById('currentKm').value = localStorage.getItem('my_km') || 0;
+            renderItems();
+        };
+    </script>
+</body>
+</html>
