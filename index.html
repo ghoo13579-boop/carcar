@@ -10,191 +10,158 @@
             --success: #06d6a0; --warning: #fb8500; --danger: #f72585;
             --fg: #e0e0ff; --muted: #8888aa; --border: #2a2a4a;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--fg); padding: 15px; line-height: 1.5; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--fg); padding: 15px; padding-bottom: 50px; }
         .container { max-width: 500px; margin: 0 auto; }
+        .header { text-align: center; padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+        .card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 12px; border: 1px solid var(--border); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+        label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+        select, input { width: 100%; padding: 12px; background: #0b0b18; border: 1px solid var(--border); color: #fff; border-radius: 10px; font-size: 16px; outline: none; margin-bottom: 10px; }
         
-        /* 헤더 & 입력창 */
-        .header { text-align: center; padding: 20px 0; }
-        .card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 15px; border: 1px solid var(--border); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
-        h1 { font-size: 22px; margin-bottom: 5px; }
-        label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
-        select, input, textarea { width: 100%; padding: 12px; background: #0b0b18; border: 1px solid var(--border); color: #fff; border-radius: 10px; font-size: 16px; outline: none; }
-        
-        /* 소모품 카드 */
-        .item-card { position: relative; overflow: hidden; }
-        .item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .item-info { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; }
         .item-name { font-weight: bold; font-size: 17px; }
         .percent { font-size: 18px; font-weight: 800; }
         
-        /* 게이지 */
-        .gauge-bg { height: 8px; background: #2a2a4a; border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
-        .gauge-fill { height: 100%; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .gauge-bg { height: 8px; background: #2a2a4a; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+        .gauge-fill { height: 100%; transition: width 0.5s ease-in-out; }
         
-        /* 버튼 */
-        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
-        .btn { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .btn-group { display: flex; gap: 8px; margin-top: 12px; }
+        .btn { flex: 1; padding: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; }
         .btn-main { background: var(--primary); color: white; }
-        .btn-edit { background: #2d3748; color: var(--muted); }
-        .btn:active { opacity: 0.7; transform: scale(0.98); }
-
-        /* 편집 모달 (사용자 주기 수정) */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+        .btn-edit { background: #2d3748; color: #ccc; }
+        
+        /* 모달 스타일 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
         .modal.active { display: flex; }
-        .modal-content { background: var(--card); width: 100%; max-width: 400px; padding: 25px; border-radius: 20px; border: 1px solid var(--border); }
+        .modal-content { background: var(--card); width: 100%; max-width: 380px; padding: 25px; border-radius: 20px; border: 1px solid var(--border); }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🚗 자동차 소모품 관리</h1>
-        </div>
+        <div class="header"><h1>🚗 자동차 소모품 관리</h1></div>
 
         <div class="card">
             <label>내 차종 선택</label>
             <select id="carSelect" onchange="changeCar()">
-                <option value="sonata">현대 쏘나타</option>
-                <option value="avante">현대 아반떼</option>
-                <option value="grandeur">현대 그랜저</option>
-                <option value="g80">제네시스 G80</option>
-                <option value="ev6">기아 EV6 (전기차)</option>
-                <option value="model3">테슬라 모델3</option>
+                <option value="ice">현대 쏘나타 / 내연기관 공용</option>
+                <option value="ev">전기차 (아이오닉, EV6, 테슬라 등)</option>
             </select>
-            
-            <div style="margin-top:15px;">
-                <label>현재 총 주행거리 (km)</label>
-                <input type="number" id="currentKm" placeholder="예: 45000" oninput="updateAll()">
-            </div>
+            <label>현재 총 주행거리 (km)</label>
+            <input type="number" id="currentKm" placeholder="현재 키로수를 입력하세요" oninput="render()">
         </div>
 
-        <div id="itemList"></div>
+        <div id="list"></div>
     </div>
 
     <div id="editModal" class="modal">
         <div class="modal-content">
-            <h3 id="editTitle" style="margin-bottom:20px;">주기 수정</h3>
+            <h3 id="editTitle" style="margin-bottom:15px;">항목 수정</h3>
             <label>교체 주기 (km)</label>
-            <input type="number" id="editKm" style="margin-bottom:15px;">
+            <input type="number" id="editKm">
             <label>교체 주기 (개월)</label>
-            <input type="number" id="editMonth" style="margin-bottom:20px;">
+            <input type="number" id="editMonth">
             <div class="btn-group">
                 <button class="btn btn-edit" onclick="closeModal()">취소</button>
-                <button class="btn btn-main" onclick="saveCustomInterval()">저장하기</button>
+                <button class="btn btn-main" onclick="saveCustom()">저장</button>
             </div>
         </div>
     </div>
 
     <script>
-        // 기본 데이터 (차종별 소모품)
-        const baseData = {
-            sonata: [
-                { id: 'oil', name: "엔진오일", km: 7500, month: 6 },
-                { id: 'air', name: "에어컨 필터", km: 10000, month: 6 },
-                { id: 'brake', name: "브레이크 액", km: 40000, month: 24 }
-            ],
-            avante: [
-                { id: 'oil', name: "엔진오일", km: 10000, month: 12 },
-                { id: 'air', name: "에어컨 필터", km: 10000, month: 6 }
-            ],
-            ev6: [
-                { id: 'gear', name: "감속기 오일", km: 120000, month: 0 },
-                { id: 'air', name: "에어컨 필터", km: 15000, month: 12 }
-            ]
-        };
+        // 1. 소모품 풀 데이터 (싹 다 추가)
+        const iceItems = [
+            { id: 'oil', name: "엔진오일 & 필터", km: 7500, month: 6 },
+            { id: 'aircon', name: "에어컨 필터", km: 10000, month: 6 },
+            { id: 'brake_f', name: "브레이크 액", km: 40000, month: 24 },
+            { id: 'brake_p', name: "브레이크 패드", km: 40000, month: 0 },
+            { id: 'tire', name: "타이어 위치 교환", km: 10000, month: 12 },
+            { id: 'spark', name: "점화 플러그", km: 70000, month: 0 },
+            { id: 'coolant', name: "냉각수", km: 200000, month: 120 },
+            { id: 'battery', name: "12V 배터리", km: 0, month: 36 },
+            { id: 'mission', name: "변속기 오일", km: 80000, month: 0 },
+            { id: 'belt', name: "겉벨트 세트", km: 100000, month: 72 }
+        ];
 
-        let editingId = null;
+        const evItems = [
+            { id: 'aircon', name: "에어컨 필터", km: 15000, month: 12 },
+            { id: 'gear', name: "감속기 오일", km: 120000, month: 0 },
+            { id: 'brake_f', name: "브레이크 액", km: 40000, month: 24 },
+            { id: 'coolant_ev', name: "전기차 전용 냉각수", km: 200000, month: 120 },
+            { id: 'tire', name: "타이어 (전기차용)", km: 10000, month: 12 },
+            { id: 'brake_p_ev', name: "브레이크 패드 (회생제동)", km: 80000, month: 0 }
+        ];
 
-        // 초기화 및 데이터 로드
-        function init() {
-            const savedKm = localStorage.getItem('user_km');
-            const savedCar = localStorage.getItem('user_car');
-            if (savedKm) document.getElementById('currentKm').value = savedKm;
-            if (savedCar) document.getElementById('carSelect').value = savedCar;
-            updateAll();
-        }
+        let editTarget = null;
 
-        function changeCar() {
-            localStorage.setItem('user_car', document.getElementById('carSelect').value);
-            updateAll();
-        }
-
-        function updateAll() {
+        function render() {
             const carType = document.getElementById('carSelect').value;
             const currentKm = parseInt(document.getElementById('currentKm').value) || 0;
-            localStorage.setItem('user_km', currentKm);
+            localStorage.setItem('u_km', currentKm);
 
-            const container = document.getElementById('itemList');
-            container.innerHTML = '';
+            const items = carType === 'ice' ? iceItems : evItems;
+            const list = document.getElementById('list');
+            list.innerHTML = '';
 
-            // 해당 차종 데이터 가져오기 (없으면 쏘나타 기본)
-            const items = baseData[carType] || baseData['sonata'];
+            items.forEach(item => {
+                const custom = JSON.parse(localStorage.getItem(`c_${carType}_${item.id}`)) || {};
+                const tKm = custom.km || item.km;
+                const tMonth = custom.month || item.month;
 
-            items.forEach((item) => {
-                // 사용자 정의 주기 확인
-                const custom = JSON.parse(localStorage.getItem(`custom_${carType}_${item.id}`)) || {};
-                const targetKm = custom.km || item.km;
-                const targetMonth = custom.month || item.month;
-
-                // 마지막 교체 기록 확인
-                const last = JSON.parse(localStorage.getItem(`last_${carType}_${item.id}`)) || { km: 0, date: new Date().toISOString() };
+                const last = JSON.parse(localStorage.getItem(`l_${carType}_${item.id}`)) || { km: 0 };
+                const diff = currentKm - last.km;
                 
-                const diffKm = currentKm - last.km;
-                let percent = Math.min(Math.max((diffKm / targetKm) * 100, 0), 100);
-                
-                const color = percent > 90 ? 'var(--danger)' : (percent > 70 ? 'var(--warning)' : 'var(--success)');
+                let per = tKm > 0 ? Math.min(Math.max((diff / tKm) * 100, 0), 100) : 0;
+                const color = per > 90 ? 'var(--danger)' : (per > 70 ? 'var(--warning)' : 'var(--success)');
 
-                container.innerHTML += `
-                    <div class="card item-card">
-                        <div class="item-header">
+                list.innerHTML += `
+                    <div class="card">
+                        <div class="item-info">
                             <div>
                                 <div class="item-name">${item.name}</div>
-                                <div style="font-size:12px; color:var(--muted)">주기: ${targetKm.toLocaleString()}km / ${targetMonth}개월</div>
+                                <div style="font-size:11px; color:var(--muted)">권장: ${tKm > 0 ? tKm.toLocaleString()+'km' : ''} ${tMonth > 0 ? tMonth+'개월' : ''}</div>
                             </div>
-                            <div class="percent" style="color:${color}">${Math.floor(percent)}%</div>
+                            <div class="percent" style="color:${color}">${Math.floor(per)}%</div>
                         </div>
-                        <div class="gauge-bg">
-                            <div class="gauge-fill" style="width:${percent}%; background:${color}"></div>
-                        </div>
-                        <div style="font-size:12px; color:var(--muted)">다음 교체까지 약 ${Math.max(targetKm - diffKm, 0).toLocaleString()}km 남음</div>
+                        <div class="gauge-bg"><div class="gauge-fill" style="width:${per}%; background:${color}"></div></div>
                         <div class="btn-group">
-                            <button class="btn btn-main" onclick="recordDone('${carType}', '${item.id}')">교체 완료</button>
-                            <button class="btn btn-edit" onclick="openModal('${carType}', '${item.id}', '${item.name}', ${targetKm}, ${targetMonth})">주기 수정</button>
+                            <button class="btn btn-main" onclick="done('${carType}','${item.id}')">교체완료</button>
+                            <button class="btn btn-edit" onclick="openM('${carType}','${item.id}','${item.name}',${tKm},${tMonth})">주기수정</button>
                         </div>
                     </div>
                 `;
             });
         }
 
-        // 교체 기록 저장
-        function recordDone(car, id) {
-            const current = document.getElementById('currentKm').value || 0;
-            localStorage.setItem(`last_${car}_${id}`, JSON.stringify({ km: parseInt(current), date: new Date().toISOString() }));
-            updateAll();
-            alert('기록되었습니다!');
+        function done(c, id) {
+            const cur = document.getElementById('currentKm').value || 0;
+            localStorage.setItem(`l_${c}_${id}`, JSON.stringify({ km: parseInt(cur) }));
+            render();
         }
 
-        // 모달 제어
-        function openModal(car, id, name, km, month) {
-            editingId = { car, id };
-            document.getElementById('editTitle').innerText = `${name} 주기 수정`;
-            document.getElementById('editKm').value = km;
-            document.getElementById('editMonth').value = month;
+        function openM(c, id, n, k, m) {
+            editTarget = { c, id };
+            document.getElementById('editTitle').innerText = n;
+            document.getElementById('editKm').value = k;
+            document.getElementById('editMonth').value = m;
             document.getElementById('editModal').classList.add('active');
         }
 
-        function closeModal() {
-            document.getElementById('editModal').classList.remove('active');
+        function closeModal() { document.getElementById('editModal').classList.remove('active'); }
+
+        function saveCustom() {
+            const k = parseInt(document.getElementById('editKm').value);
+            const m = parseInt(document.getElementById('editMonth').value);
+            localStorage.setItem(`c_${editTarget.c}_${editTarget.id}`, JSON.stringify({ km: k, month: m }));
+            closeModal(); render();
         }
 
-        function saveCustomInterval() {
-            const km = parseInt(document.getElementById('editKm').value);
-            const month = parseInt(document.getElementById('editMonth').value);
-            localStorage.setItem(`custom_${editingId.car}_${editingId.id}`, JSON.stringify({ km, month }));
-            closeModal();
-            updateAll();
-        }
+        function changeCar() { localStorage.setItem('u_car', document.getElementById('carSelect').value); render(); }
 
-        window.onload = init;
+        window.onload = () => {
+            document.getElementById('currentKm').value = localStorage.getItem('u_km') || 0;
+            document.getElementById('carSelect').value = localStorage.getItem('u_car') || 'ice';
+            render();
+        };
     </script>
 </body>
 </html>
